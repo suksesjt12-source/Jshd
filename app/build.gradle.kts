@@ -1,112 +1,184 @@
 
-name: Android APK Build
+import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
-on:
-  push:
-    branches:
-      - main
-      - master
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.secrets)
+    alias(libs.plugins.google.services)
+}
 
-  pull_request:
-    branches:
-      - main
-      - master
+// Konfigurasi signing release hanya diaktifkan jika keystore
+// dan password tersedia. Build debug tidak membutuhkan keystore khusus.
+val releaseKeystorePath =
+    System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
 
-  workflow_dispatch:
+val releaseStorePassword = System.getenv("STORE_PASSWORD")
+val releaseKeyPassword = System.getenv("KEY_PASSWORD")
 
-permissions:
-  contents: read
+val releaseKeyAlias =
+    System.getenv("ANDROID_KEY_ALIAS")
+        ?.takeIf { it.isNotBlank() }
+        ?: "upload"
 
-jobs:
-  build-apk:
-    name: Build Android APK
-    runs-on: ubuntu-latest
+val releaseSigningConfigured =
+    rootProject.file(releaseKeystorePath).isFile &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
 
-    env:
-      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+android {
+    namespace = "com.example"
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: gradle
+    defaultConfig {
+        applicationId = "com.aistudio.animearenalegends.kxvrqm"
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 1
+        versionName = "1.0"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        testInstrumentationRunner =
+            "androidx.test.runner.AndroidJUnitRunner"
+    }
 
-      - name: Install Android SDK
-        run: |
-          sdkmanager --install \
-            "platforms;android-36.1" \
-            "build-tools;36.0.0"
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(releaseKeystorePath)
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = releaseKeyAlias
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
+    }
 
-      - name: Check Java
-        run: java -version
+    buildTypes {
+        release {
+            isCrunchPngs = false
+            isMinifyEnabled = false
 
-      - name: Grant Gradle permission
-        run: chmod +x ./gradlew
+            proguardFiles(
+                getDefaultProguardFile(
+                    "proguard-android-optimize.txt"
+                ),
+                "proguard-rules.pro"
+            )
 
-      - name: Run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+            if (releaseSigningConfigured) {
+                signingConfig =
+                    signingConfigs.getByName("release")
+            }
+        }
 
-      - name: Build Debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        debug {
+            // Menggunakan debug signing bawaan Android Gradle Plugin.
+            // Tidak membutuhkan file debug.keystore di repository.
+        }
+    }
 
-      - name: Verify APK
-        shell: bash
-        run: |
-          set -euo pipefail
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
 
-          APK_FILE=$(find app/build/outputs/apk/debug \
-            -name "*.apk" -print -quit)
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
-          if [ -z "$APK_FILE" ]; then
-            echo "Debug APK not found!"
-            exit 1
-          fi
+    androidResources {
+        noCompress += listOf("wav", "glb", "gltf")
+    }
 
-          ls -lh "$APK_FILE"
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: Anime-Arena-Legends-Debug
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 30
-          if-no-files-found: error
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = true
+    }
+}
 
-      - name: Build Signed Release APK
-        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '' }}
-        shell: bash
-        env:
-          KEYSTORE_PATH: ${{ runner.temp }}/release-upload.jks
-          STORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ env.ANDROID_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
+// Konfigurasi Secrets Gradle Plugin.
+secrets {
+    propertiesFileName = ".env"
+    defaultPropertiesFileName = ".env.example"
+    ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
+}
 
-          trap 'rm -f "$KEYSTORE_PATH"' EXIT
+// Google Services tidak wajib tersedia untuk build dasar.
+googleServices {
+    missingGoogleServicesStrategy =
+        MissingGoogleServicesStrategy.WARN
+}
 
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" \
-            | base64 --decode > "$KEYSTORE_PATH"
+dependencies {
+    implementation(platform(libs.androidx.compose.bom))
 
-          test -s "$KEYSTORE_PATH"
+    // Jetpack Compose
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
 
-          ./gradlew --no-daemon assembleRelease
+    // AndroidX
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.datastore.preferences)
 
-      - name: Upload Release APK
-        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: Anime-Arena-Legends-Release
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
-          if-no-files-found: error
+    // Lifecycle
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+    // Room Database
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.runtime)
+
+    // Google Filament 3D Engine
+    implementation(libs.filament.android)
+    implementation(libs.gltfio.android)
+    implementation(libs.filament.utils.android)
+
+    // Kotlin Coroutines dan Serialization
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Unit Tests
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.core)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+
+    // Android Instrumentation Tests
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.runner)
+
+    // Debug Tools
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Room KSP
+    "ksp"(libs.androidx.room.compiler)
+}
