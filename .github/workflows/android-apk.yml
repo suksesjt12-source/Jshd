@@ -41,21 +41,30 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android SDK packages
+        shell: bash
         run: |
+          set -euo pipefail
+
           sdkmanager --install \
             "platforms;android-36.1" \
-            "build-tools;36.0.0"
+            "build-tools;36.0.0" \
+            "platform-tools"
 
-      - name: Check Java version
-        run: java -version
+      - name: Check Android SDK
+        run: sdkmanager --list_installed
 
       - name: Grant Gradle permission
         run: chmod +x ./gradlew
 
+      - name: Validate Gradle
+        run: ./gradlew --no-daemon help --stacktrace
+
       - name: Build Debug APK
-        run: ./gradlew --no-daemon clean assembleDebug
+        run: ./gradlew --no-daemon clean assembleDebug --stacktrace
 
       - name: Verify Debug APK
         shell: bash
@@ -66,11 +75,10 @@ jobs:
             -name "*.apk" -print -quit)
 
           if [ -z "$APK_FILE" ]; then
-            echo "ERROR: Debug APK tidak ditemukan."
+            echo "ERROR: APK tidak ditemukan"
             exit 1
           fi
 
-          echo "APK berhasil dibuat:"
           ls -lh "$APK_FILE"
 
       - name: Upload Debug APK
@@ -98,7 +106,7 @@ jobs:
 
           test -s "$KEYSTORE_PATH"
 
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease --stacktrace
 
       - name: Upload Release APK
         if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '' }}
