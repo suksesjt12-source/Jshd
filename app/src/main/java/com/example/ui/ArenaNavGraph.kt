@@ -54,15 +54,15 @@ fun ArenaNavGraph(viewModel: ArenaViewModel) {
         },
         onSelectMode = { mode ->
           viewModel.playUiClick()
-          navController.navigate(RouteCharacterSelect(mode))
+          navController.navigate(RouteCharacterSelect(mode)) { launchSingleTop = true }
         },
         onOpenSettings = {
           viewModel.playUiClick()
-          navController.navigate(RouteSettings)
+          navController.navigate(RouteSettings) { launchSingleTop = true }
         },
         onOpenStats = {
           viewModel.playUiClick()
-          navController.navigate(RouteStats)
+          navController.navigate(RouteStats) { launchSingleTop = true }
         },
         onAppear = { viewModel.playMenuMusic() },
       )
@@ -86,7 +86,7 @@ fun ArenaNavGraph(viewModel: ArenaViewModel) {
               difficulty = if (route.mode == GameMode.ARCADE) AiDifficulty.NOVICE else diff,
               arcadeStage = 1,
             )
-          )
+          ) { launchSingleTop = true }
         },
       )
     }

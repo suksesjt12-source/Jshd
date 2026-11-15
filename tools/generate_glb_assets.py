@@ -959,6 +959,8 @@ def export_fighter_glb(filename: str, theme: str):
             {"bufferView": bv_base_png, "mimeType": "image/png"},
             {"bufferView": bv_emis_png, "mimeType": "image/png"},
         ],
+        "bufferViews": packer.views,
+        "accessors": packer.accessors,
         "animations": gltf_anims,
     }
 
@@ -1211,6 +1213,8 @@ def export_arena_glb(filename: str):
             {"bufferView": bv_base_png, "mimeType": "image/png"},
             {"bufferView": bv_emis_png, "mimeType": "image/png"},
         ],
+        "bufferViews": packer.views,
+        "accessors": packer.accessors,
     }
 
     write_glb(os.path.join(OUT_DIR, filename), gltf, bytes(packer.buf))
@@ -1265,6 +1269,8 @@ def export_vfx_glb(filename: str, builder_fn, color_rgba, emissive_rgb):
             "alphaMode": "BLEND",
             "doubleSided": True,
         }],
+        "bufferViews": packer.views,
+        "accessors": packer.accessors,
     }
     write_glb(os.path.join(OUT_DIR, filename), gltf, bytes(packer.buf))
 
@@ -1312,9 +1318,9 @@ if __name__ == "__main__":
     export_fighter_glb("fighter_raiden.glb", "raiden")
     export_fighter_glb("fighter_homura.glb", "homura")
     export_arena_glb("arena_village.glb")
-    export_vfx_glb("vfx_slash_cyan.glb", make_slash_crescent, [0.25, 0.92, 1.0, 0.85], [0.3, 1.8, 2.2])
-    export_vfx_glb("vfx_slash_fire.glb", make_slash_crescent, [1.0, 0.45, 0.12, 0.85], [2.2, 0.75, 0.15])
-    export_vfx_glb("vfx_ring_cyan.glb", make_shockwave_ring, [0.3, 0.95, 1.0, 0.75], [0.4, 1.6, 2.0])
-    export_vfx_glb("vfx_ring_fire.glb", make_shockwave_ring, [1.0, 0.5, 0.15, 0.75], [2.0, 0.7, 0.2])
-    export_vfx_glb("vfx_shard_cyan.glb", make_energy_shard, [0.4, 0.95, 1.0, 0.9], [0.5, 1.8, 2.4])
-    export_vfx_glb("vfx_shard_fire.glb", make_energy_shard, [1.0, 0.55, 0.15, 0.9], [2.4, 0.8, 0.15])
+    export_vfx_glb("vfx_slash_cyan.glb", make_slash_crescent, [0.25, 0.92, 1.0, 0.85], [0.15, 0.85, 1.0])
+    export_vfx_glb("vfx_slash_fire.glb", make_slash_crescent, [1.0, 0.45, 0.12, 0.85], [1.0, 0.35, 0.08])
+    export_vfx_glb("vfx_ring_cyan.glb", make_shockwave_ring, [0.3, 0.95, 1.0, 0.75], [0.20, 0.80, 1.0])
+    export_vfx_glb("vfx_ring_fire.glb", make_shockwave_ring, [1.0, 0.5, 0.15, 0.75], [1.0, 0.38, 0.10])
+    export_vfx_glb("vfx_shard_cyan.glb", make_energy_shard, [0.4, 0.95, 1.0, 0.9], [0.22, 0.85, 1.0])
+    export_vfx_glb("vfx_shard_fire.glb", make_energy_shard, [1.0, 0.55, 0.15, 0.9], [1.0, 0.42, 0.10])

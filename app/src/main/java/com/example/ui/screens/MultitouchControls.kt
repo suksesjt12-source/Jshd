@@ -262,8 +262,10 @@ private fun TapCombatButton(
           awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             down.consume()
-            pressed = true
-            onTap()
+            if (enabled) {
+              pressed = true
+              onTap()
+            }
             while (true) {
               val ev = awaitPointerEvent()
               val ch = ev.changes.firstOrNull { it.id == down.id }

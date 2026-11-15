@@ -97,9 +97,6 @@ class BattleEngine(
   private val activePopups = mutableListOf<DamagePopup>()
   private val frameEvents = mutableListOf<CombatFeedbackEvent>()
 
-  private val _hudState = MutableStateFlow(buildHudSnapshot())
-  val hudState: StateFlow<BattleHudState> = _hudState.asStateFlow()
-
   private var rendererRef: FilamentArenaRenderer? = null
   private var matchPhase: MatchPhase = MatchPhase.INTRO
   private var introTimerSec = 1.6f
@@ -116,6 +113,9 @@ class BattleEngine(
   private var fpsAccumulator = 0f
   private var fpsFrames = 0
   private var displayedFps = 30
+
+  private val _hudState = MutableStateFlow(buildHudSnapshot())
+  val hudState: StateFlow<BattleHudState> = _hudState.asStateFlow()
 
   init {
     cameraController.reset(player.position, opponent.position)

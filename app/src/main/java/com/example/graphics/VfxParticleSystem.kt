@@ -86,22 +86,28 @@ class VfxParticleSystem(
     )
 
     for ((kind, count) in perKindCount) {
-      val bytes = loadBytes(pathMap.getValue(kind))
+      val bytes = runCatching { loadBytes(pathMap.getValue(kind)) }.getOrNull() ?: continue
       val pool = ObjectPool<VfxParticle>(
         maxCapacity = count,
         factory = {
-          val buf = ByteBuffer.allocateDirect(bytes.size).apply {
-            put(bytes)
-            flip()
-          }
-          val asset = assetLoader.createAsset(buf)
-          if (asset != null) {
-            resourceLoader.loadResources(asset)
-            asset.releaseSourceData()
-            scene.addEntities(asset.entities)
-            hideAsset(asset)
-            allAssets.add(asset)
-          }
+          val asset =
+            if (engine.isValid) {
+              runCatching {
+                val buf = ByteBuffer.allocateDirect(bytes.size).apply {
+                  put(bytes)
+                  flip()
+                }
+                assetLoader.createAsset(buf)?.also { loaded ->
+                  resourceLoader.loadResources(loaded)
+                  loaded.releaseSourceData()
+                  scene.addEntities(loaded.entities)
+                  hideAsset(loaded)
+                  allAssets.add(loaded)
+                }
+              }.getOrNull()
+            } else {
+              null
+            }
           VfxParticle().apply {
             this.kind = kind
             this.asset = asset

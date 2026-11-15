@@ -181,7 +181,7 @@ fun BattleScreen(
   val playerAccent =
     if (hud.playerSpec.element == ElementType.LIGHTNING) LightningCyan else FlameScarlet
 
-  Box(modifier = Modifier.fillMaxSize().background(ArenaMidnight)) {
+  Box(modifier = Modifier.fillMaxSize()) {
     // 1. Native 3D Filament SurfaceView
     AndroidView(
       factory = { ctx ->
